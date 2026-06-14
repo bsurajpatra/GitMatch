@@ -24,6 +24,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   fetchAdvancedAnalytics: async (token, repos, username) => {
     return await ipcRenderer.invoke('fetch-advanced-analytics', token, repos, username);
   },
+  analyzeJobFit: async (username, jobDescription) => {
+    return await ipcRenderer.invoke('analyze-job-fit', username, jobDescription);
+  },
   onLoadingProgress: (callback) => {
     ipcRenderer.on('loading-progress', (event, data) => {
       callback(data);

@@ -1,36 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Login from './components/Login';
-import Dashboard from './components/Dashboard';
-import { DashboardSkeleton } from './components/Skeleton';
+import LoadingState from './components/LoadingState';
+import Home from './pages/Home';
+import Results from './pages/Results';
 import GitHubService from '../../services/github.service.js';
-import HealthRankingsView from './components/HealthRankingsView';
-import AllReposView from './components/AllReposView';
 
 function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Auth state
   const [token, setToken] = useState(null);
   const [userData, setUserData] = useState(null);
-  const [repos, setRepos] = useState([]);
-  const [analytics, setAnalytics] = useState(null);
-  const [advancedAnalytics, setAdvancedAnalytics] = useState(null);
-  
-  const [loading, setLoading] = useState(true);
-  const [loadingMsg, setLoadingMsg] = useState("Initializing...");
-  const [progress, setProgress] = useState({ count: 0, total: 0 });
-  const [error, setError] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
+  // Analysis state
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [apiError, setApiError] = useState(null);
+
+  // Initialize auth
   useEffect(() => {
     const initAuth = async () => {
       try {
         const storedToken = await window.electronAPI.getToken();
         if (storedToken) {
           setToken(storedToken);
-          await startFullFetch(storedToken);
-        } else {
-          setLoading(false);
+          await fetchProfile(storedToken);
         }
       } catch (err) {
-        setLoading(false);
+        console.warn('Auth init failed:', err.message);
+      } finally {
+        setAuthLoading(false);
       }
     };
 
@@ -38,111 +40,167 @@ function App() {
 
     window.electronAPI.onAuthSuccess((newToken) => {
       setToken(newToken);
-      startFullFetch(newToken);
-    });
-
-    window.electronAPI.onLoadingProgress((data) => {
-      setProgress(data);
+      fetchProfile(newToken);
     });
 
     window.electronAPI.onAuthLogout(() => {
       setToken(null);
       setUserData(null);
-      setRepos([]);
-      setAnalytics(null);
-      setAdvancedAnalytics(null);
-      setLoading(false);
+      setAuthLoading(false);
+      setAnalysisResult(null);
+      setApiError(null);
+      navigate('/');
     });
   }, []);
 
-  const startFullFetch = async (token) => {
-    setLoading(true);
-    setError(null);
-    setLoadingMsg("Fetching basic profile...");
-    
+  const fetchProfile = async (authToken) => {
     try {
-      const service = new GitHubService(token);
-      const [profile, allRepos] = await Promise.all([
-        service.getUserProfile(),
-        service.getUserRepositories()
-      ]);
-
+      const service = new GitHubService(authToken);
+      const profile = await service.getUserProfile();
       setUserData(profile);
-      setRepos(allRepos);
-      
-      setLoadingMsg(`Analyzing ${allRepos.length} repositories...`);
-      const advanced = await window.electronAPI.fetchAdvancedAnalytics(token, allRepos, profile.login);
-      setAdvancedAnalytics(advanced);
-      
-      setLoading(false);
     } catch (err) {
-      setError(err.message || "Failed to fetch advanced analytics.");
-      setLoading(false);
+      console.warn('Profile fetch failed:', err.message);
     }
   };
 
+  // --- Analysis handler ---
+  const handleAnalyze = async (username, jobDescription) => {
+    setAnalyzing(true);
+    setApiError(null);
+    setAnalysisResult(null);
+    navigate('/');
 
+    try {
+      const response = await window.electronAPI.analyzeJobFit(username, jobDescription);
 
-  if (loading) {
+      if (response.success) {
+        setAnalysisResult(response.data);
+        setAnalyzing(false);
+        navigate('/results');
+      } else {
+        // Parse specific error types for user-friendly messages
+        const errMsg = response.error || 'Analysis failed.';
+        setApiError(friendlyError(errMsg));
+        setAnalyzing(false);
+      }
+    } catch (err) {
+      setApiError(friendlyError(err.message));
+      setAnalyzing(false);
+    }
+  };
+
+  const handleReset = () => {
+    setAnalysisResult(null);
+    setApiError(null);
+    navigate('/');
+  };
+
+  const handleLogout = () => {
+    window.electronAPI.logout();
+  };
+
+  // --- Auth loading ---
+  if (authLoading) {
     return (
-      <div className="bg-[#0d1117] min-h-screen">
-        <div className="p-8 pb-0 text-center text-[#58a6ff]">
-          <p className="fade-in">{loadingMsg}</p>
-          {progress.total > 0 && (
-            <div className="mt-4 w-64 mx-auto bg-[#161b22] rounded-full h-1.5 overflow-hidden">
-              <div 
-                className="bg-[#58a6ff] h-full transition-all duration-300" 
-                style={{ width: `${(progress.count / progress.total) * 100}%` }}
-              ></div>
-            </div>
-          )}
+      <div className="app-shell" style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <div className="loading-container" style={{ paddingTop: '40vh' }}>
+          <div className="loading-spinner" />
+          <p style={{ color: 'var(--gp-text-muted)', fontSize: '0.9rem' }}>Loading GitMatch...</p>
         </div>
-        <DashboardSkeleton />
       </div>
     );
   }
 
-  if (!token) return <Login onLogin={() => window.electronAPI.login()} error={error} />;
-
-  if (error && !userData) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen text-[#c9d1d9] bg-[#0d1117]">
-        <div className="card max-w-md p-8 glass text-center">
-          <p className="text-[#f85149] mb-4">{error}</p>
-          <button onClick={() => startFullFetch(token)} className="btn-primary w-full">Retry Connection</button>
-        </div>
-      </div>
-    );
+  // --- Login screen ---
+  if (!token) {
+    return <Login onLogin={() => window.electronAPI.login()} error={apiError} />;
   }
 
+  // --- Authenticated shell ---
   return (
-    <Routes>
-      <Route 
-        path="/" 
-        element={
-          <Dashboard 
-            user={userData} 
-            repos={repos} 
-            advanced={advancedAnalytics} 
-            onLogout={() => window.electronAPI.logout()} 
-            onRefresh={() => startFullFetch(token)}
-          />
-        } 
-      />
-      <Route 
-        path="/health-rankings" 
-        element={
-          <HealthRankingsView data={advancedAnalytics?.health || []} />
-        } 
-      />
-      <Route 
-        path="/all-repos" 
-        element={
-          <AllReposView data={repos} />
-        } 
-      />
-    </Routes>
+    <div className="app-shell">
+      <header className="app-header">
+        <div className="app-header-brand">
+          <img src="./logo.png" alt="GitMatch" />
+          <h1>GitMatch</h1>
+          <span>Job Fit Analyzer</span>
+        </div>
+        <div className="app-header-user">
+          {userData && (
+            <>
+              <span className="app-header-username">@{userData.login}</span>
+              <img
+                src={userData.avatar_url}
+                alt={userData.name || userData.login}
+                className="app-header-avatar"
+              />
+            </>
+          )}
+          <button className="btn-header-logout" onClick={handleLogout} id="btn-logout">
+            Logout
+          </button>
+        </div>
+      </header>
+
+      <main className="app-content">
+        {analyzing ? (
+          <LoadingState />
+        ) : (
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <Home
+                  defaultUsername={userData?.login || ''}
+                  onAnalyze={handleAnalyze}
+                  loading={analyzing}
+                  apiError={apiError}
+                />
+              }
+            />
+            <Route
+              path="/results"
+              element={
+                analysisResult
+                  ? <Results data={analysisResult} onBack={handleReset} />
+                  : <Home
+                      defaultUsername={userData?.login || ''}
+                      onAnalyze={handleAnalyze}
+                      loading={analyzing}
+                      apiError={apiError}
+                    />
+              }
+            />
+          </Routes>
+        )}
+      </main>
+    </div>
   );
+}
+
+/**
+ * Map raw error messages to user-friendly descriptions.
+ */
+function friendlyError(msg) {
+  if (!msg) return 'An unexpected error occurred. Please try again.';
+  const lower = msg.toLowerCase();
+
+  if (lower.includes('not found') || lower.includes('404')) {
+    return 'GitHub user not found. Please check the username and try again.';
+  }
+  if (lower.includes('rate limit') || lower.includes('403')) {
+    return 'GitHub API rate limit exceeded. Please wait a few minutes and try again.';
+  }
+  if (lower.includes('network') || lower.includes('enotfound') || lower.includes('econnrefused')) {
+    return 'Network error. Please check your internet connection.';
+  }
+  if (lower.includes('username is required')) {
+    return 'Please enter a valid GitHub username.';
+  }
+  if (lower.includes('job description is required')) {
+    return 'Please paste a job description to analyze against.';
+  }
+  return msg;
 }
 
 export default App;

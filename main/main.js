@@ -11,6 +11,7 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 import store from '../store/index.js';
 import oauthServer from '../server/index.js';
 import GitHubService from '../services/github.service.js';
+import AnalysisService from '../services/analysis.service.js';
 import { Worker } from 'worker_threads';
 import { getCachedData, setCachedData, clearExpiredCache } from '../store/cacheStore.js';
 
@@ -25,7 +26,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
-    title: "GitPulse",
+    title: "GitMatch",
     icon: isDev
       ? path.join(__dirname, '../renderer/public/logo.png')
       : path.join(__dirname, '../renderer/dist/logo.png'),
@@ -124,5 +125,15 @@ ipcMain.on('logout', () => {
 });
 ipcMain.handle('get-token', () => store.get('github_token'));
 
-
+// Job Fit Analysis Handler
+ipcMain.handle('analyze-job-fit', async (event, username, jobDescription) => {
+  try {
+    const token = store.get('github_token') || null;
+    const result = await AnalysisService.analyzeJobFit(username, jobDescription, token);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Analysis Error:', error);
+    return { success: false, error: error.message };
+  }
+});
 

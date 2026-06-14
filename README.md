@@ -1,4 +1,4 @@
-# GitPulse
+# GitMatch
 
 A production-ready desktop application built with Electron, React, and Express to provide deep insights into your GitHub presence.
 
@@ -28,7 +28,7 @@ A production-ready desktop application built with Electron, React, and Express t
 1. Go to your [GitHub Settings > Developer Settings > OAuth Apps](https://github.com/settings/developers).
 2. Click **New OAuth App**.
 3. Fill in the details:
-   - **Application Name**: `GitPulse`
+   - **Application Name**: `GitMatch`
    - **Homepage URL**: `http://localhost:3000`
    - **Authorization callback URL**: `http://localhost:3000/callback`
 4. Register the application.

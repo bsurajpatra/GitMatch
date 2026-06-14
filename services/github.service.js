@@ -1,10 +1,8 @@
 import { Octokit } from "@octokit/rest";
 
 class GitHubService {
-  constructor(token) {
-    this.octokit = new Octokit({
-      auth: token,
-    });
+  constructor(token = null) {
+    this.octokit = new Octokit(token ? { auth: token } : {});
   }
 
   async getUserProfile() {
@@ -18,6 +16,28 @@ class GitHubService {
       sort: "updated",
     });
     return repos;
+  }
+
+  async getUserByUsername(username) {
+    try {
+      const { data } = await this.octokit.rest.users.getByUsername({ username });
+      return data;
+    } catch (error) {
+      throw new Error(`Failed to fetch user profile for "${username}": ${error.message}`);
+    }
+  }
+
+  async getRepositoriesByUsername(username) {
+    try {
+      const repos = await this.octokit.paginate(this.octokit.rest.repos.listForUser, {
+        username,
+        per_page: 100,
+        type: "owner",
+      });
+      return repos;
+    } catch (error) {
+      throw new Error(`Failed to fetch repositories for "${username}": ${error.message}`);
+    }
   }
 
   // Advanced Stats Fetching
@@ -104,6 +124,35 @@ class GitHubService {
       return response.user.contributionsCollection.contributionCalendar;
     } catch (error) {
       console.warn("GraphQL error:", error.message);
+      return null;
+    }
+  }
+
+  async getRepoRootContents(owner, repo) {
+    try {
+      const { data } = await this.octokit.rest.repos.getContent({
+        owner,
+        repo,
+        path: "",
+      });
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  async getFileContents(owner, repo, path) {
+    try {
+      const { data } = await this.octokit.rest.repos.getContent({
+        owner,
+        repo,
+        path,
+      });
+      if (data && data.content && data.encoding === 'base64') {
+        return Buffer.from(data.content, 'base64').toString('utf-8');
+      }
+      return null;
+    } catch (error) {
       return null;
     }
   }

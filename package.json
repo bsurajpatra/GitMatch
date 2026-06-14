@@ -1,5 +1,5 @@
 {
-  "name": "gitpulse-desktop",
+  "name": "gitmatch-desktop",
   "version": "1.1.0",
   "main": "main/main.js",
   "type": "module",
@@ -28,7 +28,7 @@
   },
   "build": {
     "appId": "com.github.analytics.desktop",
-    "productName": "GitPulse",
+    "productName": "GitMatch",
     "icon": "build/icon.png",
     "directories": {
       "output": "dist"
@@ -41,7 +41,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "GitPulse",
+      "shortcutName": "GitMatch",
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false,
       "allowElevation": true,
