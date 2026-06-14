@@ -29,6 +29,7 @@
   "build": {
     "appId": "com.github.analytics.desktop",
     "productName": "GitPulse",
+    "icon": "build/icon.png",
     "directories": {
       "output": "dist"
     },
@@ -43,7 +44,9 @@
       "shortcutName": "GitPulse",
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false,
-      "allowElevation": true
+      "allowElevation": true,
+      "installerHeader": "build/installerHeader.bmp",
+      "installerSidebar": "build/installerSidebar.bmp"
     },
     "files": [
       "main/**/*",

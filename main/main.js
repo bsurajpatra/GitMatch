@@ -3,16 +3,16 @@ import path from 'path';
 import isDev from 'electron-is-dev';
 import dotenv from 'dotenv';
 
-dotenv.config();
-import store from '../store/index.js';
 import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '../.env') });
+import store from '../store/index.js';
 import oauthServer from '../server/index.js';
 import GitHubService from '../services/github.service.js';
 import { Worker } from 'worker_threads';
 import { getCachedData, setCachedData, clearExpiredCache } from '../store/cacheStore.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 let mainWindow;
 

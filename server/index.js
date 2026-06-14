@@ -4,7 +4,13 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { EventEmitter } from 'events';
 
-dotenv.config();
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 class OAuthServer extends EventEmitter {
   constructor() {

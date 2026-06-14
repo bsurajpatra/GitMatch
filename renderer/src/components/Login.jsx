@@ -17,7 +17,7 @@ const Login = ({ onLogin, error }) => {
             }}
           >
             <img 
-              src="/logo.png" 
+              src="./logo.png" 
               alt="GitPulse Logo" 
               style={{ 
                 width: '100%', 
