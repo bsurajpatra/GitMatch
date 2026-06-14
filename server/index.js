@@ -71,7 +71,7 @@ class OAuthServer extends EventEmitter {
     });
   }
 
-  start(port = 3000) {
+  start(port) {
     this.server = this.app.listen(port, () => {
       console.log(`OAuth server running at http://localhost:${port}`);
     });

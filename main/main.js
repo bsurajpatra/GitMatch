@@ -43,7 +43,8 @@ function createWindow() {
 
 // Start OAuth Server
 const startAuthServer = () => {
-  oauthServer.start(process.env.PORT || 3000);
+  const port = parseInt(process.env.PORT, 10);
+  oauthServer.start(port);
   oauthServer.on('token_received', (token) => {
     store.set('github_token', token);
     if (mainWindow) mainWindow.webContents.send('auth-success', token);
@@ -116,7 +117,7 @@ const chunkArray = (array, size) => {
 };
 
 // IPC Handlers
-ipcMain.on('login', () => shell.openExternal(`http://localhost:${process.env.PORT || 3000}/login`));
+ipcMain.on('login', () => shell.openExternal(`http://localhost:${process.env.PORT}/login`));
 ipcMain.on('logout', () => {
   store.delete('github_token');
   if (mainWindow) mainWindow.webContents.send('auth-logout');
