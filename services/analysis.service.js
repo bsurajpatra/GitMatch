@@ -1,14 +1,17 @@
 /**
  * @file analysis.service.js
  * @description Core service coordinating user profile fetching, background worker thread analysis, and formatting.
+ *              Includes optimizations: parallel fetching, repository dependency caching, and final result caching.
  * @module services/analysis.service
  */
 
 import GitHubService from './github.service.js';
 import { Worker } from 'worker_threads';
 import path from 'path';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { formatAnalysisResult } from '../analytics/resultFormatter.js';
+import { getCachedData, setCachedData } from '../store/cacheStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -174,10 +177,12 @@ const DEPENDENCY_FILES = [
 class AnalysisService {
   /**
    * Orchestrates the Job Fit Analysis pipeline:
-   * 1. Fetches public user profile and repositories.
-   * 2. Deep-scans dependency files for framework/library signals.
-   * 3. Delegates CPU-bound skill extraction and matching to a background Worker Thread.
-   * 4. Formats raw engine metrics into strengths, weaknesses, and match scores.
+   * 1. Checks Cache for prior matches of this user & JD combination.
+   * 2. Fetches public user profile and repositories.
+   * 3. Deep-scans dependency files for framework/library signals in parallel.
+   * 4. Extracts README and bio text signals.
+   * 5. Delegates CPU-bound skill extraction and matching to a background Worker Thread.
+   * 6. Formats raw engine metrics into strengths, weaknesses, and match scores.
    *
    * @param {string} username - Target GitHub username to analyze.
    * @param {string} jobDescription - Raw Job Description text.
@@ -192,17 +197,45 @@ class AnalysisService {
       throw new Error("Job Description is required and cannot be empty.");
     }
 
+    const cleanedUsername = username.trim().toLowerCase();
+    const jdHash = crypto.createHash('md5').update(jobDescription).digest('hex');
+    const finalCacheKey = `final_analysis_${cleanedUsername}_${jdHash}`;
+
+    // Optimization: Check for cached final analysis result
+    const cachedResult = getCachedData(finalCacheKey);
+    if (cachedResult) {
+      console.log(`[Cache Hit] Returning cached analysis for ${username}`);
+      return cachedResult;
+    }
+
     const githubService = new GitHubService(token);
 
-    // 1. Fetch public profile and public repositories
-    const profile = await githubService.getUserByUsername(username);
-    const repos = await githubService.getRepositoriesByUsername(username);
+    // 1. Fetch public profile, public repositories, and profile README in parallel
+    const [profile, repos, profileReadme] = await Promise.all([
+      githubService.getUserByUsername(username),
+      githubService.getRepositoriesByUsername(username),
+      githubService.getProfileReadme(username)
+    ]);
 
-    // 2. Deep-scan top repos for dependency files (limit to 10 most recently updated)
-    const topRepos = [...repos]
-      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-      .slice(0, 10);
+    // Optimization: Smarter Repo Selection
+    // - Filter out empty/archived/disabled repos
+    // - Prioritize owner-created (non-forked) repositories
+    // - Sort by pushed_at date (more relevant content signal than updated_at)
+    const sortedRepos = [...repos]
+      .filter(repo => !repo.disabled && repo.size > 0)
+      .sort((a, b) => {
+        // Prioritize non-forks
+        if (a.fork !== b.fork) {
+          return a.fork ? 1 : -1;
+        }
+        // Then by last pushed_at date
+        return new Date(b.pushed_at) - new Date(a.pushed_at);
+      });
 
+    // Deep scan top 12 repositories (increased from 10)
+    const topRepos = sortedRepos.slice(0, 12);
+
+    // Optimization: Run enrichment in parallel
     const enrichedRepos = await Promise.all(
       topRepos.map(repo => this.enrichRepoWithDependencies(githubService, repo))
     );
@@ -211,13 +244,21 @@ class AnalysisService {
     const remainingRepos = repos.filter(r => !topRepos.find(t => t.id === r.id));
     const allRepos = [...enrichedRepos, ...remainingRepos];
 
-    // 3. Offload CPU-bound calculations to Worker Thread
+    // Inject profile README and profile Bio to first repo under __extra__
+    if (allRepos.length > 0) {
+      allRepos[0].__extra__ = {
+        bio: profile.bio || null,
+        readmeText: profileReadme || null
+      };
+    }
+
+    // 2. Offload CPU-bound calculations to Worker Thread
     const rawMatchResult = await this.runWorkerAnalysis(allRepos, jobDescription);
 
-    // 4. Format result
+    // 3. Format result
     const formattedResult = formatAnalysisResult(rawMatchResult.match);
 
-    return {
+    const finalResult = {
       profile: {
         login: profile.login,
         name: profile.name,
@@ -233,15 +274,30 @@ class AnalysisService {
       profileSkills: rawMatchResult.profileSkills,
       ...formattedResult
     };
+
+    // Cache the final structured result
+    setCachedData(finalCacheKey, finalResult);
+
+    return finalResult;
   }
 
   /**
    * Fetches dependency files from a repo root and maps known packages to skills.
-   * Attaches `deepSkills` array to the repo object.
+   * Uses repository ID and pushed_at date for precise dependency resolution caching.
    */
   async enrichRepoWithDependencies(githubService, repo) {
     const owner = repo.owner?.login || repo.full_name?.split('/')[0];
     if (!owner) return repo;
+
+    const cacheKey = `repo_deps_${repo.id}_${repo.pushed_at}`;
+    const cachedDeps = getCachedData(cacheKey);
+
+    if (cachedDeps) {
+      return {
+        ...repo,
+        deepSkills: cachedDeps
+      };
+    }
 
     const deepSkills = new Set();
 
@@ -249,19 +305,32 @@ class AnalysisService {
     const rootContents = await githubService.getRepoRootContents(owner, repo.name);
     const rootFileNames = rootContents.map(f => f.name.toLowerCase());
 
-    for (const depFile of DEPENDENCY_FILES) {
-      if (!rootFileNames.includes(depFile.toLowerCase())) continue;
+    // Optimization: Fetch all present dependency files in parallel rather than sequentially
+    const presentFiles = DEPENDENCY_FILES.filter(depFile =>
+      rootFileNames.includes(depFile.toLowerCase())
+    );
 
-      const content = await githubService.getFileContents(owner, repo.name, depFile);
+    const fetchedFiles = await Promise.all(
+      presentFiles.map(async (depFile) => {
+        const content = await githubService.getFileContents(owner, repo.name, depFile);
+        return { depFile, content };
+      })
+    );
+
+    for (const { depFile, content } of fetchedFiles) {
       if (!content) continue;
-
       const skills = this.parseDepFile(depFile, content);
       skills.forEach(s => deepSkills.add(s));
     }
 
+    const deepSkillsArray = Array.from(deepSkills);
+    
+    // Save to Cache
+    setCachedData(cacheKey, deepSkillsArray);
+
     return {
       ...repo,
-      deepSkills: Array.from(deepSkills)
+      deepSkills: deepSkillsArray
     };
   }
 

@@ -1,122 +1,108 @@
 /**
  * @file profileSkillExtractor.js
- * @description Extracts and normalizes technical skills from GitHub repository data (names, descriptions, topics, and languages).
+ * @description Extracts and normalizes technical skills from GitHub repository data.
+ * Returns both a flat skill list and a weight map indicating signal strength.
+ *
+ * Weight tiers:
+ *   3 — dep-file evidence (package.json, requirements.txt, etc.)
+ *   2 — repo topic tag
+ *   1 — language, name, description, bio text
+ *
  * @module analytics/profileSkillExtractor
  */
 
 import { SKILL_DICTIONARY } from './jdParser.js';
 
-/**
- * Normalizes a raw skill string (e.g., topic or language name) against the predefined dictionary.
- * 
- * @param {string} rawSkill - The raw skill string to normalize.
- * @returns {string|null} The normalized skill name, or null if it doesn't match the dictionary.
- */
+// ── helpers ──────────────────────────────────────────────────────────────────
+
 function normalizeSkill(rawSkill) {
-  if (!rawSkill || typeof rawSkill !== 'string') {
-    return null;
-  }
+  if (!rawSkill || typeof rawSkill !== 'string') return null;
   const key = rawSkill.trim().toLowerCase();
   return SKILL_DICTIONARY[key] || null;
 }
 
-/**
- * Parses a string of text to find and extract any known skills from the dictionary.
- * 
- * @param {string} text - The text block (e.g., repository name or description).
- * @returns {string[]} An array of normalized skill names found in the text.
- */
 function extractSkillsFromText(text) {
-  const foundSkills = new Set();
+  const found = new Set();
   if (!text) return [];
 
   for (const [alias, normalizedName] of Object.entries(SKILL_DICTIONARY)) {
     const escapedKey = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    // Match the alias surrounded by non-alphanumeric/non-underscore characters
     const pattern = `(?:^|[^a-zA-Z0-9_])(${escapedKey})(?:$|[^a-zA-Z0-9_+#])`;
-    const regex = new RegExp(pattern, 'i');
-    
-    if (regex.test(text)) {
-      foundSkills.add(normalizedName);
+    if (new RegExp(pattern, 'i').test(text)) {
+      found.add(normalizedName);
     }
   }
-
-  return Array.from(foundSkills);
+  return Array.from(found);
 }
 
+// Weight merge helper — keeps the highest observed weight per skill
+function mergeWeight(map, skill, weight) {
+  map[skill] = Math.max(map[skill] ?? 0, weight);
+}
+
+// ── public API ────────────────────────────────────────────────────────────────
+
 /**
- * Extracts and normalizes technical skills from a list of GitHub repositories.
- * 
- * @param {Array.<Object>} repos - Array of repository objects containing name, description, topics, and language.
- * @returns {string[]} A sorted, deduplicated list of normalized skills extracted from the repositories.
+ * Extracts technical skills from an enriched repo list + optional profile signals.
+ *
+ * @param {Array<Object>} repos        - GitHub repositories (may include deepSkills).
+ * @param {Object}        [extra={}]   - Extra text signals: { bio, readmeText }
+ * @returns {{ skills: string[], weightMap: Object }}
  */
-export function extractSkillsFromProfile(repos) {
-  if (!repos || !Array.isArray(repos)) {
-    return [];
-  }
+export function extractSkillsFromProfile(repos, extra = {}) {
+  if (!repos || !Array.isArray(repos)) return { skills: [], weightMap: {} };
 
-  const extractedSkills = new Set();
+  const skillSet  = new Set();
+  const weightMap = {};           // skill → highest weight seen
 
+  // ── 1. Per-repo signals ──────────────────────────────────────────────────
   repos.forEach(repo => {
-    // 1. Extract from Primary Language
+
+    // 1a. Primary language  (weight 1)
     if (repo.language) {
-      const normalizedLang = normalizeSkill(repo.language);
-      if (normalizedLang) {
-        extractedSkills.add(normalizedLang);
-      }
+      const s = normalizeSkill(repo.language);
+      if (s) { skillSet.add(s); mergeWeight(weightMap, s, 1); }
     }
 
-    // 2. Extract from Topics/Tags
-    if (repo.topics && Array.isArray(repo.topics)) {
+    // 1b. Topics  (weight 2)
+    if (Array.isArray(repo.topics)) {
       repo.topics.forEach(topic => {
-        const normalizedTopic = normalizeSkill(topic);
-        if (normalizedTopic) {
-          extractedSkills.add(normalizedTopic);
-        }
+        const s = normalizeSkill(topic);
+        if (s) { skillSet.add(s); mergeWeight(weightMap, s, 2); }
       });
     }
 
-    // 3. Extract from Name (clean delimiters first) and Description
+    // 1c. Name + description  (weight 1)
     const nameText = repo.name ? repo.name.replace(/[_\-]/g, ' ') : '';
     const descText = repo.description || '';
-    
-    const textSkills = extractSkillsFromText(`${nameText} ${descText}`);
-    textSkills.forEach(skill => {
-      extractedSkills.add(skill);
+    extractSkillsFromText(`${nameText} ${descText}`).forEach(s => {
+      skillSet.add(s); mergeWeight(weightMap, s, 1);
     });
 
-    // 4. Extract from Deep Scanned Skills (dependencies & files)
-    if (repo.deepSkills && Array.isArray(repo.deepSkills)) {
-      repo.deepSkills.forEach(skill => {
-        extractedSkills.add(skill);
+    // 1d. Deep-scanned dep-file skills  (weight 3)
+    if (Array.isArray(repo.deepSkills)) {
+      repo.deepSkills.forEach(s => {
+        skillSet.add(s); mergeWeight(weightMap, s, 3);
       });
     }
   });
 
-  return Array.from(extractedSkills).sort();
-}
+  // ── 2. Profile-level signals ─────────────────────────────────────────────
 
-// ============================================================================
-// EXAMPLE USAGE
-// ============================================================================
-/*
-const mockRepos = [
-  {
-    name: "mern-food-app",
-    description: "Food delivery platform built with React, Express and MongoDB",
-    topics: ["react", "nodejs", "mongodb"],
-    language: "JavaScript"
-  },
-  {
-    name: "aws-infra-deploy",
-    description: "Terraform configurations for deploying dockerized microservices on AWS ECS",
-    topics: ["terraform", "docker", "aws"],
-    language: "HCL"
+  // 2a. Bio  (weight 1)
+  if (extra.bio) {
+    extractSkillsFromText(extra.bio).forEach(s => {
+      skillSet.add(s); mergeWeight(weightMap, s, 1);
+    });
   }
-];
 
-const skills = extractSkillsFromProfile(mockRepos);
-console.log(skills);
-// Output:
-// [ 'AWS', 'Docker', 'Express', 'JavaScript', 'MongoDB', 'Node.js', 'React', 'Terraform' ]
-*/
+  // 2b. Profile README  (weight 2 — user curated)
+  if (extra.readmeText) {
+    extractSkillsFromText(extra.readmeText).forEach(s => {
+      skillSet.add(s); mergeWeight(weightMap, s, 2);
+    });
+  }
+
+  const skills = Array.from(skillSet).sort();
+  return { skills, weightMap };
+}

@@ -156,6 +156,35 @@ class GitHubService {
       return null;
     }
   }
+
+  async getProfileReadme(username) {
+    try {
+      // 1. Try owner/owner repository README (standard GitHub profile README)
+      const { data } = await this.octokit.rest.repos.getReadme({
+        owner: username,
+        repo: username
+      });
+      if (data && data.content && data.encoding === 'base64') {
+        return Buffer.from(data.content, 'base64').toString('utf-8');
+      }
+    } catch (error) {
+      // Fallback
+    }
+
+    try {
+      // 2. Try owner/.github repository README (alternative fallback)
+      const { data } = await this.octokit.rest.repos.getReadme({
+        owner: username,
+        repo: '.github'
+      });
+      if (data && data.content && data.encoding === 'base64') {
+        return Buffer.from(data.content, 'base64').toString('utf-8');
+      }
+    } catch (error) {
+      // ignore
+    }
+    return null;
+  }
 }
 
 export default GitHubService;
