@@ -12,7 +12,7 @@ const Login = ({ onLogin, error }) => {
         </div>
         
         <div className="space-y-2">
-          <h1 className="text-3xl font-extrabold text-github-blue">GitHub Analytics</h1>
+          <h1 className="text-3xl font-extrabold text-github-blue">GitPulse</h1>
           <p className="text-github-secondary">Personalized insights for your repositories</p>
         </div>
 

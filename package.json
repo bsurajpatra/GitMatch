@@ -1,5 +1,5 @@
 {
-  "name": "github-analytics-desktop",
+  "name": "gitpulse-desktop",
   "version": "1.1.0",
   "main": "main/main.js",
   "type": "module",
@@ -28,7 +28,7 @@
   },
   "build": {
     "appId": "com.github.analytics.desktop",
-    "productName": "GitHub Analytics",
+    "productName": "GitPulse",
     "directories": {
       "output": "dist"
     },
@@ -40,7 +40,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "GitHub Analytics",
+      "shortcutName": "GitPulse",
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false,
       "allowElevation": true

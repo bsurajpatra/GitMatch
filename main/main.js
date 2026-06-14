@@ -25,7 +25,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
-    title: "GitHub Advanced Analytics",
+    title: "GitPulse",
     backgroundColor: '#0d1117',
     show: false,
   });

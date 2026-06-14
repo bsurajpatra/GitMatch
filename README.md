@@ -1,4 +1,4 @@
-# GitHub Analytics Desktop Application
+# GitPulse
 
 A production-ready desktop application built with Electron, React, and Express to provide deep insights into your GitHub presence.
 
@@ -28,7 +28,7 @@ A production-ready desktop application built with Electron, React, and Express t
 1. Go to your [GitHub Settings > Developer Settings > OAuth Apps](https://github.com/settings/developers).
 2. Click **New OAuth App**.
 3. Fill in the details:
-   - **Application Name**: `GitHub Analytics Desktop`
+   - **Application Name**: `GitPulse`
    - **Homepage URL**: `http://localhost:3000`
    - **Authorization callback URL**: `http://localhost:3000/callback`
 4. Register the application.
@@ -76,6 +76,3 @@ The output will be in the `/dist` directory.
 - **No Client Secrets in Frontend**: All sensitive exchanges happen in the secure Node.js environment.
 - **Context Isolation**: Enabled in Electron to prevent renderer hijacking.
 - **Environment Variables**: Used for all sensitive configuration.
-
----
-Created by Antigravity AI
