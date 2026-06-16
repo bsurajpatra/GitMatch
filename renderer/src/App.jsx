@@ -242,6 +242,7 @@ function App() {
                   return (
                     <Results
                       data={bulkCandidate}
+                      backLabel={backToReports ? "← Back to Reports" : "← Back to Screening List"}
                       onBack={() => {
                         if (backToReports) {
                           navigate('/reports');

@@ -8,20 +8,20 @@ import {
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',        to: '/',          match: ['/'] },
   { icon: User,            label: 'Single Candidate', to: '/candidate', match: ['/candidate', '/results'] },
-  { icon: Users,           label: 'Bulk Screening',   to: '/bulk',      match: ['/bulk'],    primary: true },
-  { icon: FileText,        label: 'Reports',          to: '/reports',   match: ['/reports'] },
+  { icon: Users,           label: 'Bulk Screening',   to: '/bulk',      match: ['/bulk', '/results'] },
+  { icon: FileText,        label: 'Reports',          to: '/reports',   match: ['/reports', '/results'] },
 ];
 
-function NavItem({ icon: Icon, label, to, match, primary, active, onClick }) {
+function NavItem({ icon: Icon, label, to, match, active, onClick }) {
   return (
     <button
-      className={`sidebar-nav-item ${active ? 'sidebar-nav-active' : ''} ${primary ? 'sidebar-nav-primary' : ''}`}
+      className={`sidebar-nav-item ${active ? 'sidebar-nav-active' : ''}`}
       onClick={onClick}
       title={label}
+      type="button"
     >
       <Icon size={16} className="sidebar-nav-icon" />
       <span className="sidebar-nav-label">{label}</span>
-      {primary && <span className="sidebar-primary-dot" />}
     </button>
   );
 }
@@ -30,7 +30,26 @@ export default function Sidebar({ userData, onLogout }) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isActive = (match) => match.some(m => location.pathname === m);
+  const isActive = (item) => {
+    const pathMatches = item.match.some(m => location.pathname === m);
+    if (!pathMatches) return false;
+
+    // Special routing highlight for results page
+    if (location.pathname === '/results') {
+      const isBulkCandidate = location.state?.candidateData;
+      const isBackToReports = location.state?.backToReports;
+
+      if (isBackToReports) {
+        return item.to === '/reports';
+      } else if (isBulkCandidate) {
+        return item.to === '/bulk';
+      } else {
+        return item.to === '/candidate';
+      }
+    }
+
+    return true;
+  };
 
   return (
     <aside className="app-sidebar">
@@ -48,7 +67,7 @@ export default function Sidebar({ userData, onLogout }) {
           <NavItem
             key={item.to}
             {...item}
-            active={isActive(item.match)}
+            active={isActive(item)}
             onClick={() => navigate(item.to)}
           />
         ))}

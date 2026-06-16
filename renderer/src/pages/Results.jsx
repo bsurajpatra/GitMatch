@@ -6,7 +6,15 @@ import MissingSkills from '../components/MissingSkills';
 import StrengthsCard from '../components/StrengthsCard';
 import WeaknessesCard from '../components/WeaknessesCard';
 
-const Results = ({ data, onBack }) => {
+const Results = ({ data, onBack, backLabel = '← New Analysis' }) => {
+  React.useEffect(() => {
+    const mainContent = document.querySelector('.app-main-content');
+    if (mainContent) {
+      mainContent.scrollTo({ top: 0, behavior: 'instant' });
+    }
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [data]);
+
   if (!data) return null;
 
   const {
@@ -36,9 +44,83 @@ const Results = ({ data, onBack }) => {
         <div className="results-top-bar">
           <h2>Analysis Results</h2>
           <button className="btn-new-analysis" onClick={onBack} id="btn-new-analysis">
-            ← New Analysis
+            {backLabel}
           </button>
         </div>
+
+        {/* Candidate Profile Banner */}
+        {profile && (
+          <div className="candidate-profile-banner" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1.25rem',
+            background: 'var(--bg-dark-2)',
+            border: '1px solid var(--border-dark-strong)',
+            padding: '1.25rem 1.5rem',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: '1.5rem',
+            animation: 'fadeInUp 0.35s ease-out'
+          }}>
+            {profile.avatar_url && (
+              <img
+                src={profile.avatar_url}
+                alt={profile.name || profile.login}
+                style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  border: '2px solid var(--border-dark-strong)',
+                  background: 'var(--bg-dark)'
+                }}
+              />
+            )}
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-on-dark)' }}>
+                  {profile.name || profile.login}
+                </h1>
+                {profile.login && (
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-muted-on-dark)' }}>
+                    (@{profile.login})
+                  </span>
+                )}
+              </div>
+              {profile.bio && (
+                <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: 'var(--text-light)', opacity: 0.9 }}>
+                  {profile.bio}
+                </p>
+              )}
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '0.6rem', fontSize: '0.75rem', color: 'var(--text-muted-on-dark)' }}>
+                <span><strong>{profile.public_repos ?? 0}</strong> Repositories</span>
+                <span><strong>{profile.followers ?? 0}</strong> Followers</span>
+                <span><strong>{profile.following ?? 0}</strong> Following</span>
+              </div>
+            </div>
+            {profile.login && (
+              <button
+                onClick={() => window.open(`https://github.com/${profile.login}`, '_blank')}
+                style={{
+                  background: 'var(--bg-dark)',
+                  border: '1px solid var(--border-dark-strong)',
+                  color: 'var(--text-on-dark)',
+                  padding: '0.5rem 0.85rem',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  transition: 'var(--trans)'
+                }}
+                type="button"
+                className="btn-github-link"
+              >
+                GitHub Profile ↗
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Score Card */}
         <MatchScoreCard
