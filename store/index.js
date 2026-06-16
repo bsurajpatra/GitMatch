@@ -10,6 +10,14 @@ const schema = {
     default: {
       theme: 'dark'
     }
+  },
+  reports_bulk: {
+    type: 'array',
+    default: []
+  },
+  reports_single: {
+    type: 'array',
+    default: []
   }
 };
 

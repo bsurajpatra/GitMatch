@@ -20,7 +20,6 @@ const Results = ({ data, onBack }) => {
     profile,
   } = data;
 
-  // Role and experience from JD parse (passed through the pipeline)
   const role = data.role || 'Job Role';
   const experience = data.experience || 'Not Specified';
 
@@ -30,9 +29,8 @@ const Results = ({ data, onBack }) => {
         {/* Top bar */}
         <div className="results-top-bar">
           <h2>Analysis Results</h2>
-          <button className="btn-back" onClick={onBack} id="btn-new-analysis">
-            <ArrowLeft size={15} />
-            New Analysis
+          <button className="btn-new-analysis" onClick={onBack} id="btn-new-analysis">
+            ← New Analysis
           </button>
         </div>
 

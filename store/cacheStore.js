@@ -45,4 +45,9 @@ export const clearExpiredCache = () => {
   store.set('cached_stats', cleanedCache);
 };
 
-export default { getCachedData, setCachedData, clearExpiredCache };
+export const clearAllCache = () => {
+  store.set('cached_stats', {});
+};
+
+export default { getCachedData, setCachedData, clearExpiredCache, clearAllCache };
+

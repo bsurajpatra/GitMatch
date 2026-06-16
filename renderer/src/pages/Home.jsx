@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
-import { Sparkles, AlertCircle } from 'lucide-react';
-import UsernameInput from '../components/UsernameInput';
+import { AlertCircle, AtSign, Zap } from 'lucide-react';
 import JDInput from '../components/JDInput';
 import AnalyzeButton from '../components/AnalyzeButton';
 
-const Home = ({ defaultUsername, onAnalyze, loading, apiError }) => {
+const Home = ({ defaultUsername, userData, onAnalyze, loading, apiError }) => {
   const [username, setUsername] = useState(defaultUsername || '');
   const [jobDescription, setJobDescription] = useState('');
   const [errors, setErrors] = useState({});
 
-  const validate = () => {
+  const validate = (overrideUsername) => {
     const newErrors = {};
-    const trimmedUser = username.trim();
+    const trimmedUser = (overrideUsername ?? username).trim();
     const trimmedJd = jobDescription.trim();
 
     if (!trimmedUser) {
@@ -37,37 +36,74 @@ const Home = ({ defaultUsername, onAnalyze, loading, apiError }) => {
     }
   };
 
+  // Fill username field with the logged-in user's GitHub login
+  const handleUseMyAccount = () => {
+    const myLogin = userData?.login || '';
+    if (myLogin) setUsername(myLogin);
+  };
+
   return (
     <div className="home-page">
       <div className="home-container">
-        {/* Hero */}
-        <div className="home-hero">
-          <div className="home-hero-badge">
-            <Sparkles size={13} />
-            Job Fit Analyzer
-          </div>
-          <h2>Assess candidate-job alignment in seconds</h2>
-          <p>
-            Enter a GitHub username and paste a job description.
-            GitMatch will extract skills and calculate a match score.
+
+        {/* Header */}
+        <div className="home-header">
+          <div className="home-tag">Single Candidate</div>
+          <h2 className="home-title">Evaluate a GitHub Profile</h2>
+          <p className="home-desc">
+            Enter a GitHub username and paste a job description to calculate a precise match score.
           </p>
         </div>
 
-        {/* Form */}
+        {/* Form card */}
         <div className="home-form-card">
           {apiError && (
             <div className="form-api-error">
-              <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
+              <AlertCircle size={15} style={{ flexShrink: 0, marginTop: '1px' }} />
               <span>{apiError}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit}>
-            <UsernameInput
-              value={username}
-              onChange={setUsername}
-              error={errors.username}
-            />
+            {/* Username + "Use my account" inline */}
+            <div className="form-group">
+              <div className="form-label-row">
+                <label htmlFor="github-username" className="form-label" style={{ margin: 0 }}>
+                  <AtSign size={13} className="form-label-icon" />
+                  GitHub Username
+                </label>
+                {userData?.login && (
+                  <button
+                    type="button"
+                    className="btn-use-mine"
+                    onClick={handleUseMyAccount}
+                    title={`Fill with @${userData.login}`}
+                    id="btn-use-my-account"
+                  >
+                    <Zap size={11} />
+                    Use @{userData.login}
+                  </button>
+                )}
+              </div>
+              <input
+                id="github-username"
+                type="text"
+                className={`form-input ${errors.username ? 'form-input-error' : ''}`}
+                placeholder="e.g. octocat"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="off"
+                spellCheck="false"
+              />
+              {errors.username ? (
+                <p className="form-error-text">
+                  <AlertCircle size={12} />
+                  {errors.username}
+                </p>
+              ) : (
+                <p className="form-hint">Public profile and repositories will be analyzed</p>
+              )}
+            </div>
 
             <JDInput
               value={jobDescription}

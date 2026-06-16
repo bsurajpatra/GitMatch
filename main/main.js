@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import path from 'path';
+import fs from 'fs';
 import isDev from 'electron-is-dev';
 import dotenv from 'dotenv';
 
@@ -12,8 +13,9 @@ import store from '../store/index.js';
 import oauthServer from '../server/index.js';
 import GitHubService from '../services/github.service.js';
 import AnalysisService from '../services/analysis.service.js';
+import BulkCandidateAnalysisService from '../services/bulkCandidateAnalysis.service.js';
 import { Worker } from 'worker_threads';
-import { getCachedData, setCachedData, clearExpiredCache } from '../store/cacheStore.js';
+import { getCachedData, setCachedData, clearExpiredCache, clearAllCache } from '../store/cacheStore.js';
 
 let mainWindow;
 
@@ -136,4 +138,88 @@ ipcMain.handle('analyze-job-fit', async (event, username, jobDescription) => {
     return { success: false, error: error.message };
   }
 });
+
+// Bulk Candidate Screening Handler
+ipcMain.handle('evaluate-candidates-bulk', async (event, { usernames, jobDescription, minimumScore }) => {
+  try {
+    const token = store.get('github_token') || null;
+    const result = await BulkCandidateAnalysisService.analyze({
+      usernames,
+      jobDescription,
+      minimumScore: Number(minimumScore) || 0,
+      token,
+      onProgress: (progress) => {
+        if (mainWindow) mainWindow.webContents.send('bulk-progress', progress);
+      },
+    });
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Bulk Analysis Error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Reports History & Preferences Handlers
+ipcMain.handle('get-reports', () => {
+  return {
+    bulk: store.get('reports_bulk') || [],
+    single: store.get('reports_single') || []
+  };
+});
+
+ipcMain.handle('save-report', (event, { type, report }) => {
+  const key = type === 'bulk' ? 'reports_bulk' : 'reports_single';
+  const maxItems = type === 'bulk' ? 50 : 100;
+  const reports = store.get(key) || [];
+  
+  const index = reports.findIndex(r => r.id === report.id);
+  if (index !== -1) {
+    reports[index] = report;
+  } else {
+    reports.unshift(report);
+  }
+  
+  if (reports.length > maxItems) {
+    reports.length = maxItems;
+  }
+  
+  store.set(key, reports);
+  return { success: true, reports };
+});
+
+ipcMain.handle('delete-report', (event, { type, id }) => {
+  const key = type === 'bulk' ? 'reports_bulk' : 'reports_single';
+  const reports = store.get(key) || [];
+  const filtered = reports.filter(r => r.id !== id);
+  store.set(key, filtered);
+  return { success: true, reports: filtered };
+});
+
+ipcMain.handle('get-cache-info', () => {
+  try {
+    const filePath = path.join(app.getPath('userData'), 'github_analytics_cache.json');
+    if (fs.existsSync(filePath)) {
+      const stats = fs.statSync(filePath);
+      return { sizeBytes: stats.size };
+    }
+  } catch (error) {
+    console.error('Error getting cache info:', error);
+  }
+  return { sizeBytes: 0 };
+});
+
+ipcMain.handle('clear-cache', () => {
+  clearAllCache();
+  return { success: true };
+});
+
+ipcMain.handle('get-preferences', () => {
+  return store.get('user_preferences') || { theme: 'dark' };
+});
+
+ipcMain.handle('set-preferences', (event, prefs) => {
+  store.set('user_preferences', prefs);
+  return { success: true };
+});
+
 
