@@ -52,11 +52,103 @@ class OAuthServer extends EventEmitter {
           this.emit('token_received', accessToken);
           res.send(`
             <html>
-              <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #0d1117; color: #c9d1d9;">
-                <h1 style="color: #58a6ff;">Authentication Successful!</h1>
-                <p>You can now close this window and return to the application.</p>
+              <head>
+                <title>GitMatch — Authentication Successful</title>
+                <link rel="preconnect" href="https://fonts.googleapis.com">
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+                <style>
+                  * {
+                    box-sizing: border-box;
+                    margin: 0;
+                    padding: 0;
+                  }
+                  body {
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100vh;
+                    background-color: #0d0d0d;
+                    color: #f0ece6;
+                    overflow: hidden;
+                  }
+                  .card {
+                    background: #141414;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 10px;
+                    padding: 3rem;
+                    max-width: 440px;
+                    width: 90%;
+                    text-align: center;
+                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+                    animation: scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                  }
+                  @keyframes scaleIn {
+                    from { opacity: 0; transform: scale(0.96) translateY(10px); }
+                    to { opacity: 1; transform: scale(1) translateY(0); }
+                  }
+                  .brand {
+                    font-family: 'Barlow Condensed', sans-serif;
+                    font-size: 1.8rem;
+                    font-weight: 900;
+                    letter-spacing: 0.03em;
+                    text-transform: uppercase;
+                    color: #f0ece6;
+                    margin-bottom: 2rem;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.4rem;
+                  }
+                  .brand span {
+                    color: #c8401a;
+                  }
+                  .success-icon {
+                    width: 56px;
+                    height: 56px;
+                    background: rgba(34, 197, 94, 0.08);
+                    border: 1px solid rgba(34, 197, 94, 0.2);
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 0 auto 1.5rem;
+                    color: #22c55e;
+                  }
+                  h1 {
+                    font-family: 'Barlow Condensed', sans-serif;
+                    font-size: 2.2rem;
+                    font-weight: 900;
+                    letter-spacing: 0.01em;
+                    text-transform: uppercase;
+                    color: #f0ece6;
+                    margin-bottom: 0.75rem;
+                    line-height: 1.1;
+                  }
+                  p {
+                    color: #888880;
+                    font-size: 0.9rem;
+                    line-height: 1.5;
+                    margin-bottom: 0;
+                  }
+                </style>
+              </head>
+              <body>
+                <div class="card">
+                  <div class="brand">GIT<span>MATCH</span></div>
+                  <div class="success-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </div>
+                  <h1>Success!</h1>
+                  <p>Authentication was completed successfully. You can now return to the GitMatch app.</p>
+                </div>
                 <script>
-                  window.close();
+                  setTimeout(function() {
+                    window.close();
+                  }, 1000);
                 </script>
               </body>
             </html>

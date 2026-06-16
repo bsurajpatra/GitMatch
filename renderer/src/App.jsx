@@ -157,6 +157,17 @@ function App() {
     }
   };
 
+  const refreshReports = async () => {
+    try {
+      const data = await window.electronAPI.getReports();
+      if (data) {
+        setReports(data);
+      }
+    } catch (err) {
+      console.warn('Failed to load reports:', err);
+    }
+  };
+
   const handleBulkReopen = (report) => {
     navigate('/bulk', { state: { reopenedReport: report } });
   };
@@ -230,6 +241,7 @@ function App() {
                   reports={reports}
                   onBulkReopen={handleBulkReopen}
                   onSingleReopen={handleSingleReopen}
+                  refreshReports={refreshReports}
                 />
               }
             />
@@ -288,6 +300,7 @@ function App() {
                   deleteReport={handleDeleteReport}
                   onBulkReopen={handleBulkReopen}
                   onSingleReopen={handleSingleReopen}
+                  refreshReports={refreshReports}
                 />
               }
             />

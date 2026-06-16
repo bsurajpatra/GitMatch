@@ -39,6 +39,7 @@ function StatCard({ value, label, color }) {
 
 function ScreeningCard({ report, onOpen }) {
   const top = report.allRankings?.[0];
+  const topScore = top ? (top.finalScore ?? Math.round(0.7 * (top.weightedMatchScore ?? top.overallScore ?? 0) + 0.3 * (top.quality?.qualityScore ?? 0))) : 0;
   return (
     <button className="dash-recent-card" onClick={onOpen}>
       <div className="dash-recent-card-left">
@@ -55,9 +56,9 @@ function ScreeningCard({ report, onOpen }) {
         {top && (
           <span
             className="dash-recent-score"
-            style={{ color: getScoreColor(top.overallScore || 0) }}
+            style={{ color: getScoreColor(topScore) }}
           >
-            #{top.rank} {top.overallScore}%
+            #{top.rank} {topScore}%
           </span>
         )}
         <ChevronRight size={14} className="dash-recent-arrow" />
@@ -67,7 +68,9 @@ function ScreeningCard({ report, onOpen }) {
 }
 
 function CandidateRow({ report, onOpen }) {
-  const score = report.result?.overallScore ?? 0;
+  const jobFit = report.result?.weightedMatchScore ?? report.result?.overallScore ?? 0;
+  const quality = report.result?.quality?.qualityScore ?? 0;
+  const score = report.result?.finalScore ?? Math.round(0.7 * jobFit + 0.3 * quality);
   return (
     <button className="dash-candidate-row" onClick={onOpen}>
       {report.result?.profile?.avatar_url && (
@@ -246,8 +249,15 @@ function EmptyDashboard({ userData, onBulk, onSingle }) {
 }
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
-export default function Dashboard({ userData, reports, onBulkReopen, onSingleReopen }) {
+export default function Dashboard({ userData, reports, onBulkReopen, onSingleReopen, refreshReports }) {
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (typeof refreshReports === 'function') {
+      refreshReports();
+    }
+  }, []);
+
   const { bulk = [], single = [] } = reports;
 
   const hasActivity = bulk.length > 0 || single.length > 0;
@@ -257,8 +267,16 @@ export default function Dashboard({ userData, reports, onBulkReopen, onSingleReo
     bulk.reduce((acc, r) => acc + (r.stats?.successfulAnalyses || 0), 0) + single.length;
 
   const allScores = [
-    ...bulk.flatMap(r => (r.allRankings || []).map(c => c.overallScore || 0)),
-    ...single.map(r => r.result?.overallScore || 0),
+    ...bulk.flatMap(r => (r.allRankings || []).map(c => {
+      const jobFit = c.weightedMatchScore ?? c.overallScore ?? 0;
+      const quality = c.quality?.qualityScore ?? 0;
+      return c.finalScore ?? Math.round(0.7 * jobFit + 0.3 * quality);
+    })),
+    ...single.map(r => {
+      const jobFit = r.result?.weightedMatchScore ?? r.result?.overallScore ?? 0;
+      const quality = r.result?.quality?.qualityScore ?? 0;
+      return r.result?.finalScore ?? Math.round(0.7 * jobFit + 0.3 * quality);
+    }),
   ];
   const avgScore = allScores.length
     ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length)

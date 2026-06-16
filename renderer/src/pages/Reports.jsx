@@ -124,7 +124,13 @@ function SingleReportCard({ report, onReopen, onDelete }) {
 }
 
 // ─── Reports Page ────────────────────────────────────────────────────────────
-export default function Reports({ reports, deleteReport, onBulkReopen, onSingleReopen }) {
+export default function Reports({ reports, deleteReport, onBulkReopen, onSingleReopen, refreshReports }) {
+  React.useEffect(() => {
+    if (typeof refreshReports === 'function') {
+      refreshReports();
+    }
+  }, []);
+
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('bulk'); // 'bulk' | 'single'
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { id, type, name }
