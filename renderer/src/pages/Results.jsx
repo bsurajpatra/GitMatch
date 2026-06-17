@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ArrowLeft, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
 import MatchedSkills from '../components/MatchedSkills';
 import MissingSkills from '../components/MissingSkills';
@@ -20,6 +20,25 @@ function getScoreTier(score) {
 }
 
 const Results = ({ data, onBack, backLabel = '← New Analysis' }) => {
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(null);
+
+  const handleExportPDF = async () => {
+    if (!data) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      const res = await window.electronAPI.exportCandidateReport(data);
+      if (!res.success && res.error !== 'Export cancelled') {
+        setExportError(res.error || 'Failed to export PDF');
+      }
+    } catch (err) {
+      setExportError(err.message || 'An unexpected error occurred');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   React.useEffect(() => {
     const mainContent = document.querySelector('.app-main-content');
     if (mainContent) {
@@ -77,9 +96,25 @@ const Results = ({ data, onBack, backLabel = '← New Analysis' }) => {
         {/* Top bar */}
         <div className="results-top-bar">
           <h2>Analysis Results</h2>
-          <button className="btn-new-analysis" onClick={onBack} id="btn-new-analysis">
-            {backLabel}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {exportError && (
+              <span style={{ color: 'var(--danger-text)', fontSize: '0.75rem', marginRight: '1rem', fontWeight: 600 }}>
+                {exportError}
+              </span>
+            )}
+            <button
+              className="btn-export-pdf"
+              onClick={handleExportPDF}
+              disabled={exporting}
+              style={{ marginRight: '0.75rem' }}
+              id="btn-export-candidate-pdf"
+            >
+              {exporting ? 'Exporting...' : 'Export PDF'}
+            </button>
+            <button className="btn-new-analysis" onClick={onBack} id="btn-new-analysis">
+              {backLabel}
+            </button>
+          </div>
         </div>
 
         {/* Candidate Profile Banner */}

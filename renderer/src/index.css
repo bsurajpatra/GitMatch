@@ -72,7 +72,7 @@ body {
 button { font-family: inherit; border: none; cursor: pointer; transition: var(--trans); background: transparent; color: inherit; }
 a { color: var(--accent); text-decoration: none; }
 img { display: block; max-width: 100%; }
-::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: var(--bg-dark); }
 ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: #444; }
@@ -607,6 +607,38 @@ img { display: block; max-width: 100%; }
 
 .btn-new-analysis:hover { background: var(--accent-hover); transform: translateY(-1px); }
 .btn-new-analysis:active { transform: scale(0.99); }
+
+.btn-export-pdf {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-on-dark);
+  background: var(--bg-dark-2);
+  border: 1px solid var(--border-dark-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--trans);
+}
+
+.btn-export-pdf:hover {
+  background: var(--bg-dark-3);
+  border-color: var(--text-on-dark);
+  transform: translateY(-1px);
+}
+
+.btn-export-pdf:active {
+  transform: scale(0.99);
+}
+
+.btn-export-pdf:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* ============================================ */
 /* Loading State                                */

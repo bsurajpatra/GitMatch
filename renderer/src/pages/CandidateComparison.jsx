@@ -27,6 +27,8 @@ export default function CandidateComparison() {
   const [comparison, setComparison] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(null);
 
   const { candidates = [], jobDescription = '', bulkBackState = null, backToReports = false } = location.state || {};
 
@@ -123,6 +125,30 @@ export default function CandidateComparison() {
 
   const { winner, winnerProfile, comparisonSummary = [], categories = {}, insights = {}, finalRecommendation = '' } = comparison;
 
+  const handleExportComparison = async () => {
+    if (!comparison) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      const payload = {
+        winner,
+        winnerProfile,
+        finalRecommendation,
+        categories,
+        insights,
+        candidates
+      };
+      const res = await window.electronAPI.exportComparisonReport(payload);
+      if (!res.success && res.error !== 'Export cancelled') {
+        setExportError(res.error || 'Failed to export comparison report');
+      }
+    } catch (err) {
+      setExportError(err.message || 'An unexpected error occurred');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="fade-in">
       <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
@@ -142,17 +168,35 @@ export default function CandidateComparison() {
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em',
                 marginBottom: '0.5rem',
+                border: 'none',
+                background: 'transparent',
                 cursor: 'pointer'
               }}
             >
               <ArrowLeft size={13} /> {backToReports ? 'Back to Reports' : 'Back to Screening'}
             </button>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-on-dark)' }}>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-on-dark)', margin: 0 }}>
               Candidate Comparison
             </h1>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted-on-dark)', marginTop: '0.25rem' }}>
               Side-by-side engineering evaluation for {candidates.length} profiles
             </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {exportError && (
+              <span style={{ color: 'var(--danger-text)', fontSize: '0.75rem', fontWeight: 600 }}>
+                {exportError}
+              </span>
+            )}
+            <button
+              className="btn-export-pdf"
+              onClick={handleExportComparison}
+              disabled={exporting}
+              id="btn-export-comparison-pdf"
+            >
+              {exporting ? 'Exporting...' : 'Export Comparison Report'}
+            </button>
           </div>
         </div>
 
@@ -182,7 +226,7 @@ export default function CandidateComparison() {
         {/* ── Profiles Side-by-Side Cards ────────────────────────────── */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: `repeat(${candidates.length}, 1fr)`,
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
           gap: '1.25rem',
           marginBottom: '2rem'
         }}>
@@ -326,7 +370,7 @@ export default function CandidateComparison() {
             </div>
 
             {/* Exclusive Skills Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${candidates.length}, 1fr)`, gap: '1.25rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.25rem' }}>
               {candidates.map(c => {
                 const unique = categories.skills?.uniqueSkills?.[c.username] || [];
                 return (
@@ -372,8 +416,8 @@ export default function CandidateComparison() {
                     <th>Core Skill</th>
                     <th>Evidence Winner</th>
                     {candidates.map(c => (
-                      <th key={c.username} style={{ textAlign: 'center' }}>
-                        @{c.username} confidence
+                      <th key={c.username} style={{ textAlign: 'center', minWidth: '100px' }}>
+                        @{c.username}
                       </th>
                     ))}
                   </tr>
@@ -440,8 +484,8 @@ export default function CandidateComparison() {
                   <th>Engineering Hygiene</th>
                   <th>Practice Winner</th>
                   {candidates.map(c => (
-                    <th key={c.username} style={{ textAlign: 'center' }}>
-                      @{c.username} index
+                    <th key={c.username} style={{ textAlign: 'center', minWidth: '100px' }}>
+                      @{c.username}
                     </th>
                   ))}
                 </tr>

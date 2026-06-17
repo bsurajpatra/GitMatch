@@ -70,4 +70,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   compareCandidates: async (payload) => {
     return await ipcRenderer.invoke('compare-candidates', payload);
   },
+  exportCandidateReport: async (candidateData) => {
+    return await ipcRenderer.invoke('export-candidate-report', candidateData);
+  },
+  exportScreeningReport: async (screeningData) => {
+    return await ipcRenderer.invoke('export-screening-report', screeningData);
+  },
+  exportComparisonReport: async (comparisonData) => {
+    return await ipcRenderer.invoke('export-comparison-report', comparisonData);
+  },
 });

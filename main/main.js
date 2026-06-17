@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import isDev from 'electron-is-dev';
@@ -15,6 +15,7 @@ import GitHubService from '../services/github.service.js';
 import AnalysisService from '../services/analysis.service.js';
 import BulkCandidateAnalysisService from '../services/bulkCandidateAnalysis.service.js';
 import { compareCandidates } from '../analytics/candidateComparisonEngine.js';
+import pdfReportService from '../services/pdfReportService.js';
 import { Worker } from 'worker_threads';
 import { getCachedData, setCachedData, clearExpiredCache, clearAllCache } from '../store/cacheStore.js';
 
@@ -232,6 +233,74 @@ ipcMain.handle('get-preferences', () => {
 ipcMain.handle('set-preferences', (event, prefs) => {
   store.set('user_preferences', prefs);
   return { success: true };
+});
+
+// PDF Export Handlers
+ipcMain.handle('export-candidate-report', async (event, candidateData) => {
+  try {
+    const { filePath } = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export Candidate Report',
+      defaultPath: `${candidateData.username || 'candidate'}-evaluation-report.pdf`,
+      filters: [{ name: 'PDF Documents', extensions: ['pdf'] }]
+    });
+
+    if (!filePath) {
+      return { success: false, error: 'Export cancelled' };
+    }
+
+    await pdfReportService.generateCandidateReport(filePath, candidateData);
+    shell.openPath(filePath);
+    return { success: true, filePath };
+  } catch (error) {
+    console.error('Export Candidate Report Error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('export-screening-report', async (event, screeningData) => {
+  try {
+    const defaultName = screeningData.name
+      ? screeningData.name.replace(/[\s\/\\]+/g, '_').toLowerCase()
+      : 'bulk_screening_report';
+    
+    const { filePath } = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export Screening Report',
+      defaultPath: `${defaultName}.pdf`,
+      filters: [{ name: 'PDF Documents', extensions: ['pdf'] }]
+    });
+
+    if (!filePath) {
+      return { success: false, error: 'Export cancelled' };
+    }
+
+    await pdfReportService.generateScreeningReport(filePath, screeningData);
+    shell.openPath(filePath);
+    return { success: true, filePath };
+  } catch (error) {
+    console.error('Export Screening Report Error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('export-comparison-report', async (event, comparisonData) => {
+  try {
+    const { filePath } = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export Comparison Report',
+      defaultPath: 'candidate-comparison-report.pdf',
+      filters: [{ name: 'PDF Documents', extensions: ['pdf'] }]
+    });
+
+    if (!filePath) {
+      return { success: false, error: 'Export cancelled' };
+    }
+
+    await pdfReportService.generateComparisonReport(filePath, comparisonData);
+    shell.openPath(filePath);
+    return { success: true, filePath };
+  } catch (error) {
+    console.error('Export Comparison Report Error:', error);
+    return { success: false, error: error.message };
+  }
 });
 
 

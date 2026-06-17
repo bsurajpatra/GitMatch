@@ -71,6 +71,32 @@ const BulkScreening = ({ onSaveReport }) => {
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState(null);
   const [selectedUsernames, setSelectedUsernames] = useState([]);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(null);
+
+  const handleExportScreening = async () => {
+    if (!results) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      const payload = {
+        name: screeningName.trim(),
+        statistics: results.statistics,
+        allRankings: results.allRankings,
+        failures: results.failures,
+        jobDescription: jobDescription.trim(),
+        minimumScore: Number(minimumScore)
+      };
+      const res = await window.electronAPI.exportScreeningReport(payload);
+      if (!res.success && res.error !== 'Export cancelled') {
+        setExportError(res.error || 'Failed to export screening report');
+      }
+    } catch (err) {
+      setExportError(err.message || 'An unexpected error occurred');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
@@ -211,6 +237,8 @@ const BulkScreening = ({ onSaveReport }) => {
     setJobDescription('');
     setMinimumScore(70);
     setSelectedUsernames([]);
+    setExportError(null);
+    setExporting(false);
     // Clear router state to prevent loop reopening
     navigate('/bulk', { replace: true, state: {} });
   };
@@ -499,9 +527,24 @@ const BulkScreening = ({ onSaveReport }) => {
                   {results.statistics.successfulAnalyses} candidates analyzed · ranked by Final Score
                 </p>
               </div>
-              <button className="btn-new-screening" onClick={handleNewScreening}>
-                ← New Screening
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                {exportError && (
+                  <span style={{ color: 'var(--danger-text)', fontSize: '0.75rem', fontWeight: 600 }}>
+                    {exportError}
+                  </span>
+                )}
+                <button
+                  className="btn-export-pdf"
+                  onClick={handleExportScreening}
+                  disabled={exporting}
+                  id="btn-export-screening-pdf"
+                >
+                  {exporting ? 'Exporting...' : 'Export Screening Report'}
+                </button>
+                <button className="btn-new-screening" onClick={handleNewScreening}>
+                  ← New Screening
+                </button>
+              </div>
             </div>
 
             {/* Stats Cards */}
