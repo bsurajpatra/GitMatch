@@ -32,6 +32,7 @@
     "appId": "com.github.analytics.desktop",
     "productName": "GitMatch",
     "icon": "build/icon.png",
+    "asar": false,
     "directories": {
       "output": "dist"
     },
@@ -56,6 +57,7 @@
       "services/**/*",
       "analytics/**/*",
       "store/**/*",
+      "utils/**/*",
       ".env",
       "renderer/dist/**/*",
       "package.json",

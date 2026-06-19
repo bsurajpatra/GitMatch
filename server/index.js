@@ -75,14 +75,14 @@ class OAuthServer extends EventEmitter {
                     overflow: hidden;
                   }
                   .card {
-                    background: #141414;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    background: transparent;
+                    border: none;
                     border-radius: 10px;
                     padding: 3rem;
                     max-width: 440px;
                     width: 90%;
                     text-align: center;
-                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+                    box-shadow: none;
                     animation: scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
                   }
                   @keyframes scaleIn {

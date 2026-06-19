@@ -38,17 +38,18 @@ function createWindow() {
     show: false,
   });
 
-  const url = isDev
-    ? 'http://localhost:5173'
-    : `file://${path.join(__dirname, '../renderer/dist/index.html')}`;
+  if (isDev) {
+    mainWindow.loadURL('http://localhost:5173');
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../renderer/dist/index.html'));
+  }
 
-  mainWindow.loadURL(url);
   mainWindow.once('ready-to-show', () => mainWindow.show());
 }
 
 // Start OAuth Server
 const startAuthServer = () => {
-  const port = parseInt(process.env.PORT, 10);
+  const port = parseInt(process.env.PORT, 10) || 3000;
   oauthServer.start(port);
   oauthServer.on('token_received', (token) => {
     store.set('github_token', token);

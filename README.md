@@ -116,6 +116,8 @@ npm run build
 ```
 Compiles assets and packages the app into a distributable installer executable inside `/dist`.
 
+*Note: ASAR packaging is disabled (`"asar": false` in `package.json`) to allow Node's native ES Module (ESM) resolution loader to correctly resolve sibling file imports and worker thread paths at runtime.*
+
 ---
 
 ## 📂 Project Structure
